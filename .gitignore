@@ -1,0 +1,41 @@
+# Build artifacts
+/target
+/logs
+/log
+
+# Binaries
+*.exe
+*.dll
+
+# ONNX runtime binaries (download separately, see README)
+onnxruntime*.dll
+DirectML.dll
+
+# Models — too large for git, download from upstream release
+# https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/models
+models/
+
+# Debug dumps
+cwrs_dump_*.wav
+cwrs_dump_*.bin
+*.bin
+
+# Demo / sample media
+demo.mp3
+demo.wav
+demo.json
+demo.srt
+demo.txt
+
+# Local config (contains API keys / internal endpoints)
+config.toml
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+Thumbs.db
+.DS_Store

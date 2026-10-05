@@ -1,0 +1,93 @@
+# CapsWriter-RS 配置文件（示例）
+# 复制为 config.toml 后按需修改。所有相对路径均相对于本文件所在目录。
+
+[server]
+num_threads = 4        # ONNX CPU 推理线程数
+warmup = true          # 启动时预热一次，消除首次识别延迟
+
+[engine]
+# 引擎类型：sensevoice | qwen3asr（各引擎专属配置见下方对应子段）
+kind = "sensevoice"
+onnxruntime_dll = ""   # onnxruntime.dll 路径，留空 = 按 provider 自动探测
+provider = "auto"      # 执行提供器：auto / cpu / dml / cuda
+                       #   auto = 探测到 GPU dll 就用 GPU，否则 CPU
+                       #   dml  = DirectML（exe 旁需 onnxruntime-dml.dll + DirectML.dll，配 fp16 模型最佳）
+                       #   cuda = CUDA    （exe 旁需 onnxruntime-cuda.dll + CUDA 12 运行库）
+
+# ============ SenseVoice 引擎（kind = "sensevoice" 时生效）============
+[engine.sensevoice]
+model_dir = "models/SenseVoice-Small-fp16/Sensevoice-Small-ONNX"
+encoder = "SenseVoice-Encoder.fp16.onnx"      # CPU 模式建议 int8 版：SenseVoice-Encoder.int8.onnx
+decoder = "SenseVoice-CTC.fp16.onnx"
+tokenizer = "tokenizer.bpe.model"
+language = "auto"      # auto / zh / en / ja / ko / yue
+use_itn = true         # 模型原生数字转换（"十五六个" → "15~16个"）
+seg_duration_s = 40    # 长音频分段长度（秒）
+seg_overlap_s = 5      # 分段重叠（秒），用于拼接去重
+
+# ============ Qwen3-ASR 引擎（kind = "qwen3asr" 时生效；模型放 models/Qwen3-ASR/）============
+[engine.qwen3asr]
+model_dir = "models/Qwen3-ASR"
+llm_gguf = "qwen3_asr_llm.gguf"               # Qwen3-ASR-1.7B q4_k 量化
+frontend = "qwen3_asr_encoder_frontend.onnx"
+backend = "qwen3_asr_encoder_backend.onnx"
+language = "auto"         # auto / zh / en / …（拼入识别 prompt）
+llama_bin_dir = ""       # 空 = <model_dir>/llama/bin（原版 CapsWriter 的魔改 llama.cpp）
+n_ctx = 2048             # 每秒音频约 20 token，40s 分块 + 1 记忆块
+chunk_size_s = 40        # 分块长度
+memory_num = 1           # 记忆块数（上一块音频+文本拼入下一块 prompt）
+temperature = 0.4        # 生成温度（熔断重试时自动 +0.3）
+llm_use_gpu = true       # llama.cpp Vulkan 卸载全部层
+
+[client]
+# 托盘常驻：默认模式启动后台托盘（蓝=就绪 红=录音 橙=识别 灰=暂停），右键菜单可暂停/开机自启/退出
+tray = true
+
+# ============ 触发方式 ============
+hold_mouse_left = true     # 按住鼠标左键说话，松开上屏（短按 < 阈值 = 普通点击，不受影响）
+focus_check = false         # 左键按下时检测焦点是否为输入框（桌面/文件列表等非输入区不录音）；
+                           #   false = 停用检测，任何位置按住左键都录音（与旧版行为一致）
+hold_mouse_x2 = true       # 按住鼠标侧键（前进键 X2）说话，短按会自动补发原按键
+hold_capslock = false      # 按住 CapsLock 说话（会屏蔽其大小写切换功能，短按自动补发）
+hold_threshold_ms = 250    # 按住短于该毫秒数视为普通点击/按键
+move_cancel_px = 30        # 按住期间鼠标移动超过该像素距离则取消（防拖拽/框选误触）
+
+# ============ 输出 ============
+paste = true               # true: 写剪贴板 + 模拟 Ctrl+V 粘贴；false: 逐字符模拟输入
+restore_clipboard = true   # 粘贴后恢复原剪贴板内容
+type_interval_ms = 0       # 逐字符输出的间隔
+trash_punc = "，。,."       # 识别结果末尾要消除的标点
+trash_punc_thresh = 8      # 语义单元数低于该值时强制去末尾标点（长句保留）
+paste_apps = []            # 指定进程强制使用粘贴模式，如 ["WeChat.exe", "Telegram.exe"]
+enter_apps = []            # 输出完成后自动回车的进程，如 [["happ.exe", 0.5]]
+
+# ============ 热词与规则 ============
+hot_enabled = true
+hotwords_path = "hot.txt"
+hot_thresh = 0.80          # 拼音相似度替换阈值（0~1，越高越严格）
+rules_enabled = true
+rules_path = "hot-rule.txt"
+
+# ============ 归档 ============
+save_audio = true          # 保存每条录音
+audio_name_len = 20        # 录音文件名包含识别结果前 N 个字
+save_diary = true          # 按日归档识别文本
+archive_dir = "log"        # 归档根目录：log/年/月/...
+
+[transcribe]
+save_srt = true
+save_txt = true
+save_json = true
+ffmpeg_fallback = true     # 非直读格式（mp4/mkv 等）调用系统 ffmpeg 解码
+
+[llm]
+enabled = true             # 识别结果以角色名开头时交给 LLM 处理（如「润色 帮我把这句话整理一下」）
+
+# 角色示例（OpenAI 兼容接口均可）：
+[[llm.role]]
+name = "润色"
+prompt = "请润色下面的语音输入文本，直接输出润色结果，不要任何解释："
+base_url = "http://your-llm-endpoint/v1"
+api_key = "your-api-key"
+model = "your-model-name"
+temperature = 0.3

@@ -1,0 +1,48 @@
+[package]
+name = "capswriter-rs"
+version = "0.1.0"
+edition = "2021"
+description = "CapsWriter Offline — Rust 实现的完全离线语音输入工具（单 exe 启动）"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0"
+bytemuck = "1"
+chrono = "0.4"
+cpal = "0.15.3"
+fancy-regex = "0.13"
+half = "2.4"
+hound = "3.5"
+libloading = "0.8"
+ndarray = "0.16"
+ort = { version = "=2.0.0-rc.9", default-features = false, features = ["load-dynamic", "ndarray", "half"] }
+pinyin = "0.10"
+reqwest = { version = "0.12", features = ["blocking", "json", "rustls-tls"], default-features = false }
+rustfft = "6.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+symphonia = { version = "0.5", default-features = false, features = ["mp3", "wav", "flac", "ogg", "vorbis", "isomp4", "aac", "pcm"] }
+toml = "0.8"
+
+# Windows 专属：全局钩子、剪贴板、SendInput 上屏、托盘图标
+[target.'cfg(windows)'.dependencies]
+tray-icon = "0.19"
+windows = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Com",
+    "Win32_System_Console",
+    "Win32_System_DataExchange",
+    "Win32_System_Memory",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Registry",
+    "Win32_System_Threading",
+    "Win32_UI_Accessibility",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[profile.release]
+lto = "thin"
+strip = true
+codegen-units = 1
